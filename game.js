@@ -66,8 +66,8 @@ renderer.domElement
 );
 
 const ambient = new THREE.AmbientLight(
-0xffffff,
-2
+    0xffffff,
+    0.35
 );
 
 scene.add(ambient);
@@ -93,6 +93,25 @@ color: 0x222222
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
+const ceiling = new THREE.Mesh(
+
+    new THREE.PlaneGeometry(
+        100,
+        100
+    ),
+
+    new THREE.MeshStandardMaterial({
+        color: 0x1a1a1a
+    })
+);
+
+ceiling.rotation.x =
+Math.PI / 2;
+
+ceiling.position.y = 6;
+
+scene.add(ceiling);
+
 const colliders = [];
 const batteries = [];
 
@@ -117,9 +136,42 @@ return wall;
 
 }
 
-createWall(0, 3, -20, 30, 6, 1);
+createWall(-8, 3, -20, 14, 6, 1);
+createWall(8, 3, -20, 14, 6, 1);
+
 createWall(-15, 3, -5, 1, 6, 30);
 createWall(15, 3, -5, 1, 6, 30);
+
+function createCrate(x, z) {
+
+    const crate =
+    new THREE.Mesh(
+
+        new THREE.BoxGeometry(
+            1,
+            1,
+            1
+        ),
+
+        new THREE.MeshStandardMaterial({
+            color: 0x6a4b2a
+        })
+    );
+
+    crate.position.set(
+        x,
+        0.5,
+        z
+    );
+
+    scene.add(crate);
+
+    return crate;
+}
+
+createCrate(-6, -12);
+createCrate(-4, -12);
+createCrate(6, -6);
 
 const diary = new THREE.Mesh(
 
@@ -141,6 +193,21 @@ diary.position.set(
 );
 
 scene.add(diary);
+
+const diaryLight =
+new THREE.PointLight(
+    0xff2200,
+    15,
+    8
+);
+
+diaryLight.position.set(
+    0,
+    2.5,
+    -10
+);
+
+scene.add(diaryLight);
 
 addInteractable(
 
@@ -249,6 +316,21 @@ addInteractable(
             );
         }
 
+        const interactableIndex =
+interactables.findIndex(
+    obj => obj.mesh === battery
+);
+
+if (
+    interactableIndex !== -1
+) {
+
+    interactables.splice(
+        interactableIndex,
+        1
+    );
+}
+
         message.innerHTML =
         "Батарея подобрана";
     }
@@ -328,6 +410,21 @@ addInteractable(
 
         scene.remove(keycard);
 
+        const interactableIndex =
+interactables.findIndex(
+    obj => obj.mesh === keycard
+);
+
+if (
+    interactableIndex !== -1
+) {
+
+    interactables.splice(
+        interactableIndex,
+        1
+    );
+}
+
         showMessage(
     "Карта доступа получена"
 );
@@ -338,9 +435,9 @@ const archiveDoor =
 new THREE.Mesh(
 
     new THREE.BoxGeometry(
-        2,
-        3,
-        0.3
+    4,
+    3,
+    0.5
     ),
 
     new THREE.MeshStandardMaterial({
@@ -351,10 +448,40 @@ new THREE.Mesh(
 archiveDoor.position.set(
     0,
     1.5,
-    -18
+    -20
 );
 
 scene.add(archiveDoor);
+
+createWall(
+    0,
+    3,
+    -35,
+    20,
+    6,
+    1,
+    0x333333
+);
+
+createWall(
+    -10,
+    3,
+    -28,
+    1,
+    6,
+    15,
+    0x333333
+);
+
+createWall(
+    10,
+    3,
+    -28,
+    1,
+    6,
+    15,
+    0x333333
+);
 
 addInteractable(
 
@@ -380,6 +507,21 @@ addInteractable(
         scene.remove(
             archiveDoor
         );
+
+        const interactableIndex =
+        interactables.findIndex(
+        obj => obj.mesh === archiveDoor
+        );
+
+        if (
+        interactableIndex !== -1
+        ) {
+
+        interactables.splice(
+        interactableIndex,
+        1
+        );
+        }
 
         currentObjective =
         "Исследовать архив";
@@ -804,39 +946,50 @@ function diarySound() {
     );
 }
 
-function stepSound() {
+function stepSound(type = "walk") {
 
+    if (!audioCtx) return;
 
-if (!audioCtx) return;
+    const osc =
+    audioCtx.createOscillator();
 
-const osc =
-audioCtx.createOscillator();
+    const gain =
+    audioCtx.createGain();
 
-const gain =
-audioCtx.createGain();
+    osc.connect(gain);
 
-osc.connect(gain);
+    gain.connect(
+        audioCtx.destination
+    );
 
-gain.connect(
-    audioCtx.destination
-);
+    if (type === "run") {
 
-osc.frequency.value = 80;
+        osc.frequency.value = 120;
+        gain.gain.value = 0.10;
 
-gain.gain.value = 0.08;
+    } else if (
+        type === "crouch"
+    ) {
 
-gain.gain.exponentialRampToValueAtTime(
-    0.0001,
-    audioCtx.currentTime + 0.08
-);
+        osc.frequency.value = 45;
+        gain.gain.value = 0.03;
 
-osc.start();
+    } else {
 
-osc.stop(
-    audioCtx.currentTime + 0.08
-);
+        osc.frequency.value = 80;
+        gain.gain.value = 0.08;
+    }
 
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audioCtx.currentTime + 0.08
+    );
 
+    osc.start();
+
+    osc.stop(
+        audioCtx.currentTime + 0.08
+    );
 }
 
 function doorOpenSound() {
@@ -1323,14 +1476,56 @@ const moving =
 
 if (
     moving &&
-    onGround &&
-    performance.now() - lastStep > 350
+    onGround
 ) {
 
-    stepSound();
+    const running =
+    keys["ShiftLeft"];
 
-    lastStep =
-    performance.now();
+    const crouching =
+    keys["ControlLeft"] ||
+    keys["ControlRight"] ||
+    keys["KeyC"];
+
+    const stepDelay =
+    crouching
+        ? 500
+        : running
+        ? 220
+        : 350;
+
+    if (
+        performance.now() -
+        lastStep >
+        stepDelay
+    ) {
+
+        if (
+            crouching
+        ) {
+
+            stepSound(
+                "crouch"
+            );
+
+        } else if (
+            running
+        ) {
+
+            stepSound(
+                "run"
+            );
+
+        } else {
+
+            stepSound(
+                "walk"
+            );
+        }
+
+        lastStep =
+        performance.now();
+    }
 }
 
 if (onGround) {
