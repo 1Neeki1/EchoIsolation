@@ -68,12 +68,12 @@ new THREE.TextureLoader();
 
 const floorTexture =
 textureLoader.load(
-    "./assets/textures/floor.jpg"
+    "../../assets/textures/floor.jpg"
 );
 
 const wallTexture =
 textureLoader.load(
-    "./assets/textures/wall.jpg"
+    "../../assets/textures/wall.jpg"
 );
 
 wallTexture.wrapS =
